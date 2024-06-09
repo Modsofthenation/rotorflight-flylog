@@ -290,12 +290,6 @@ local function create(zone, options)
     end
 
     model_flight_stats = read_all_model_logs(model_name)
-
-    --Parse the data
-    -- local str_temp = string.sub(log_info, 21, 23)
-    -- if tonumber(str_temp) ~= nil then
-    --     model_flight_stats.flight_count = tonumber(str_temp)
-    -- end
     return widget
 end
 
@@ -812,46 +806,17 @@ local function refresh(widget, event, touchState)
                             xs = 12
                             if m > 0 then
                                 ys = ys + 35
+                                y_position= y_position + 25
                             end
                         else
                             xs = xs + 58
                         end
-                        draw_log_menu(xs, ys, m == sele_number - 1, string.sub(data.logs[m + 1], 13, 17))
+                        draw_log_menu(xs, ys, m == sele_number - 1, string.sub(data.logs[m], 13, 17))
                     end
                 end
-                y_position= y_position + 60
+                y_position= y_position + 60 + 35
             end
         end
-    
-        --Title
-        -- lcd.drawText(12, 2,
-        --     file_name .. "  " ..
-        --     hours .. ':' ..
-        --     minutes[2] .. ':' ..
-        --     seconds[2] .. " [" ..
-        --     string.format("%02d", model_flight_stats.flight_count) .. ']', telemetry_label_color_flag)
-        --Menu
-        -- if model_flight_stats.flight_count ~= 0 then
-        --     xs = 12
-        --     ys = 25
-        --     --View the log contents
-        --     if display_log_flag then
-        --         draw_log_content(40, 55, string.format(sele_number) .. "#  " .. string.sub(log_data[sele_number], 4, 11), log_data[sele_number], telemetry_value_color_flag)
-        --     else
-        --         --Log menu
-        --         for m = 0, model_flight_stats.flight_count - 1 do
-        --             if m % 8 == 0 then
-        --                 xs = 12
-        --                 if m > 0 then
-        --                     ys = ys + 35
-        --                 end
-        --             else
-        --                 xs = xs + 58
-        --             end
-        --             draw_log_menu(xs, ys, m == sele_number - 1, string.sub(log_data[m + 1], 13, 17))
-        --         end
-        --     end
-        -- end
     end
 
     --Write log files
