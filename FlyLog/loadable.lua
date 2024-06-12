@@ -115,9 +115,9 @@ end
 local function read_all_model_logs(current_model_name)
   local total_flight_time = 0
   local flight_count = 0
-  for fname in dir("/WIDGETS/Test/logs/") do
+  for fname in dir("/WIDGETS/" .. NAME .. "/logs/") do
     if string.find(fname, current_model_name) then
-      file_obj = io.open("/WIDGETS/Test/logs/" .. fname, "r")
+      file_obj = io.open("/WIDGETS/" .. NAME .. "/logs/" .. fname, "r")
       line = io.read(file_obj, LOG_INFO_LEN + 1)
       
       hours = string.sub(line, 12, 13)
@@ -220,14 +220,14 @@ local function widget_create()
   end
 
   --Loading pic
-  pic_obj = Bitmap.open("/WIDGETS/Test/a.png")
+  pic_obj = Bitmap.open("/WIDGETS/" .. NAME .. "/a.png")
 
   --log
   file_name = '[' .. model_name .. ']' ..
       string.format("%d", getDateTime().year) ..
       string.format("%02d", getDateTime().mon) ..
       string.format("%02d", getDateTime().day) .. ".log"
-  file_path = "/WIDGETS/Test/logs/" .. file_name
+  file_path = "/WIDGETS/" .. NAME .. "/logs/" .. file_name
 
   local file_info = fstat(file_path)
   local read_count = 1
@@ -705,7 +705,7 @@ function libGUI.widgetRefresh()
           play_speed = play_speed + 1
           if play_speed > 2 then
             play_speed = 0
-            playFile("/WIDGETS/Test/batlow.wav")
+            playFile("/WIDGETS/" .. NAME .. "/batlow.wav")
             playHaptic(25, 50, 0)
             playHaptic(10, 20, 1)
           end
