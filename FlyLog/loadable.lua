@@ -49,7 +49,10 @@ local seconds = { 0, 0 }
 local play_speed = 0
 
 local model_flight_stats = {}
--- local selected_day_index = 1
+local selected_flight = { 
+  index = 0, 
+  log_file = "" 
+}
 
 --Flag
 local paint_color_flag = BLACK
@@ -134,8 +137,8 @@ local function read_all_model_logs(current_model_name)
 
       current_read_count = 0
       log_data[fname] = {
-          flight_count = current_log_file_flight_count,
-          logs = {}
+        flight_count = current_log_file_flight_count,
+        logs = {}
       }
       while true do
           log_data[fname]["logs"][current_read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
@@ -405,10 +408,60 @@ local logViewer = libGUI.newGUI()
 
 function logViewer.fullScreenRefresh()
   lcd.drawFilledRectangle(40, 30, LCD_W - 80, 30, COLOR_THEME_SECONDARY1)
-  lcd.drawText(50, 45, "Flight Log  " .. aboutPage .. "/" .. #aboutText, VCENTER + MIDSIZE + libGUI.colors.primary2)
+  lcd.drawText(50, 45, "Flight: " .. selected_flight.index + 1, VCENTER + MIDSIZE + libGUI.colors.primary2)
   lcd.drawFilledRectangle(40, 60, LCD_W - 80, LCD_H - 90, libGUI.colors.primary2)
   lcd.drawRectangle(40, 30, LCD_W - 80, LCD_H - 60, libGUI.colors.primary1, 2)
-  lcd.drawTextLines(50, 70, LCD_W - 120, LCD_H - 110, aboutText[aboutPage])
+
+  local message = log_data[selected_flight.log_file]["logs"][selected_flight.index]
+  local extract = {}
+  local value
+  local index, length = 4, 8
+  --Date time
+  extract[1] = string.sub(message, index, index + length - 1)
+  --Flight time
+  index = 13
+  length = 5
+  extract[2] = string.sub(message, index, index + length - 1)
+  --Capa Fuel HSpd Current Power [[Battery ESC MCU 1RSS 2RSS RQly] MAX MIN] Throttle BEC[MAX MIN]
+  for t = 1, 20 do
+    index = index + length + 1
+    if t == 2 or t == 16 or t == 17 or t == 18 then
+      length = 3
+    elseif t == 4 then
+      length = 5
+    else
+      length = 4
+    end
+    value = tonumber(string.sub(message, index, index + length - 1))
+    if t == 4 or t == 6 or t == 7 or t == 19 or t == 20 then
+      extract[t + 2] = string.format("%.1f", value)
+    else
+      extract[t + 2] = string.format("%d", value)
+    end
+  end
+
+  local localX = 50
+  local localY = 40
+  lcd.drawText(localX + 5, localY + 30,
+      "Time: " .. extract[2] .. '\n' ..
+      "Capa: " .. extract[3] .. "[mAh]\n" ..
+      "Fuel: " .. extract[4] .. "[%]\n" ..
+      "HSpd: " .. extract[5] .. "[rpm]\n" ..
+      "Throttle: " .. extract[20] .. "[%]\n" ..
+      "Current: " .. extract[6] .. "[A]\n" ..
+      "Power: " .. extract[7] .. "[W]"
+      , flags)
+  lcd.drawText(localX + 205, localY + 30,
+      "Battery: " .. extract[8] .. " -> " .. extract[9] .. "[V]\n" ..
+      "BEC: " .. extract[21] .. " -> " .. extract[22] .. "[V]\n" ..
+      "ESC: " .. extract[11] .. " -> " .. extract[10] .. "[°C]\n" ..
+      "MCU: " .. extract[13] .. " -> " .. extract[12] .. "[°C]\n" ..
+      data_field[8] .. ": " .. extract[14] .. " -> " .. extract[15] .. "[dB]\n" ..
+      data_field[9] .. ": " .. extract[16] .. " -> " .. extract[17] .. "[dB]\n" ..
+      data_field[10] .. ": " .. extract[18] .. " -> " .. extract[19] .. "[%]"
+      , flags)
+
+  -- lcd.drawTextLines(50, 70, LCD_W - 120, LCD_H - 110, aboutText[aboutPage])
 end
 
 -- Button showing Log Viewer prompt
@@ -465,7 +518,12 @@ for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
             else
               xs = xs + 58
             end
-            gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), function() gui.showPrompt(logViewer) end)
+            gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
+              function()
+                selected_flight = { index = m, log_file = log_file_name }
+                gui.showPrompt(logViewer) 
+              end
+            )
         end
       end
     break
