@@ -371,23 +371,41 @@ function logViewer.fullScreenRefresh()
   local localX = 50
   local localY = 40
   lcd.drawText(localX + 5, localY + 30,
-      "Time: " .. extract[2] .. '\n' ..
-      "Capa: " .. extract[3] .. "[mAh]\n" ..
-      "Fuel: " .. extract[4] .. "[%]\n" ..
-      "HSpd: " .. extract[5] .. "[rpm]\n" ..
-      "Throttle: " .. extract[20] .. "[%]\n" ..
-      "Current: " .. extract[6] .. "[A]\n" ..
-      "Power: " .. extract[7] .. "[W]"
-      , flags)
-  lcd.drawText(localX + 205, localY + 30,
-      "Battery: " .. extract[8] .. " -> " .. extract[9] .. "[V]\n" ..
-      "BEC: " .. extract[21] .. " -> " .. extract[22] .. "[V]\n" ..
-      "ESC: " .. extract[11] .. " -> " .. extract[10] .. "[°C]\n" ..
-      "MCU: " .. extract[13] .. " -> " .. extract[12] .. "[°C]\n" ..
-      data_field[8] .. ": " .. extract[14] .. " -> " .. extract[15] .. "[dB]\n" ..
-      data_field[9] .. ": " .. extract[16] .. " -> " .. extract[17] .. "[dB]\n" ..
-      data_field[10] .. ": " .. extract[18] .. " -> " .. extract[19] .. "[%]"
-      , flags)
+    "Time: \n"..
+    "Capacity: \n" ..
+    "Used Bat: \n" ..
+    "HSpd: \n" ..
+    "Throttle: \n" ..
+    "Current: \n" ..
+    "Power: "
+    , flags)
+  lcd.drawText(localX + 85, localY + 30,
+    extract[2] .. '\n' ..
+    extract[3] .. "mAh\n" ..
+    extract[4] .. "%\n" ..
+    extract[5] .. "rpm\n" ..
+    extract[20] .. "%\n" ..
+    extract[6] .. "A\n" ..
+    extract[7] .. "W"
+    , flags)
+  lcd.drawText(localX + 195, localY + 30,
+    "Battery: \n" ..
+    "BEC: \n" ..
+    "ESC: \n" ..
+    "MCU: \n" ..
+    data_field[8] .. ": \n" ..
+    data_field[9] .. ": \n" ..
+    data_field[10] .. ":"
+    , flags)
+  lcd.drawText(localX + 265, localY + 30,
+    extract[8] .. "V -> " .. extract[9] .. "V\n" ..
+    extract[21] .. "V -> " .. extract[22] .. "V\n" ..
+    extract[11] .. "°C -> " .. extract[10] .. "°C\n" ..
+    extract[13] .. "°C -> " .. extract[12] .. "°C\n" ..
+    extract[14] .. "dB -> " .. extract[15] .. "dB\n" ..
+    extract[16] .. "dB -> " .. extract[17] .. "dB\n" ..
+    extract[18] .. "% -> " .. extract[19] .. "%"
+    , flags)
 end
 
 -- Make a dismiss button from a custom element
