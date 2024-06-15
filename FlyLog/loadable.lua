@@ -53,6 +53,8 @@ local selected_flight = {
   index = 0, 
   log_file = "" 
 }
+local model_log_file_count = 0
+local selected_log_file_index = 0
 
 --Flag
 local paint_color_flag = BLACK
@@ -105,10 +107,10 @@ local function fuel_percentage(xs, ys, capa, number)
   local color = lcd.RGB(255 - number * 2.55, number * 2.55, 0)
   lcd.drawAnnulus(xs, ys, 65, 70, 0, 360, lcd.RGB(100, 100, 100))
   if number ~= 0 then
-      lcd.drawAnnulus(xs, ys, 45, 65, (100 - number) * 3.6, 360, color)
+    lcd.drawAnnulus(xs, ys, 45, 65, (100 - number) * 3.6, 360, color)
   end
   if number ~= 100 then
-      lcd.drawAnnulus(xs, ys, 45, 65, 0, (100 - number) * 3.6, lcd.RGB(220, 220, 220))
+    lcd.drawAnnulus(xs, ys, 45, 65, 0, (100 - number) * 3.6, lcd.RGB(220, 220, 220))
   end
   lcd.drawText(xs + 2, ys - 10, string.format("%d%%", number), CENTER + VCENTER + DBLSIZE + telemetry_value_color_flag)
   lcd.drawText(xs, ys + 15, string.format("%dmAh", capa), CENTER + VCENTER + telemetry_value_color_flag)
@@ -120,6 +122,8 @@ local function read_all_model_logs(current_model_name)
   local flight_count = 0
   for fname in dir("/WIDGETS/" .. NAME .. "/logs/") do
     if string.find(fname, current_model_name) then
+      model_log_file_count = model_log_file_count + 1
+
       file_obj = io.open("/WIDGETS/" .. NAME .. "/logs/" .. fname, "r")
       line = io.read(file_obj, LOG_INFO_LEN + 1)
       
@@ -188,10 +192,10 @@ local function widget_create()
 
   --Initialize the array
   for i = 1, TELE_ITEMS - 1 do
-      value_min_max[i] = { 0, 0, 0 }
+    value_min_max[i] = { 0, 0, 0 }
   end
   for i = 1, TELE_ITEMS do
-      field_id[i] = { 0, 0 }
+    field_id[i] = { 0, 0 }
   end
 
   --Protocol Type
@@ -201,7 +205,7 @@ local function widget_create()
   for m = 1, 2 do
     if module[m] ~= nil then
       if module[m].Type == 6 and module[m].protocol == 64 then -- MULTIMODULE D16
-        protocol_type = 1                                    -- FPORT
+        protocol_type = 1                                      -- FPORT
         break
       end
     end
@@ -310,9 +314,6 @@ function custom.onEvent(event, touchState)
   end
 end
 
--- A timer
--- gui.label(COL1, TOP, WIDTH, HEIGHT, "Timer", BOLD)
-
 local function timerChange(steps, timer)
   if steps < 0 then
     return (math.ceil(timer.value / 60) + steps) * 60
@@ -320,89 +321,6 @@ local function timerChange(steps, timer)
     return (math.floor(timer.value / 60) + steps) * 60
   end
 end
-
--- gui.timer(COL1, TOP + ROW, WIDTH, 1.4 * HEIGHT, 0, timerChange, DBLSIZE + RIGHT)
-
--- -- A sub-gui
--- gui.label(COL2, TOP, WIDTH, HEIGHT, "Group of elements", BOLD)
--- local subGUI = gui.gui(COL2, TOP + ROW, COL4 + WIDTH - COL3, 2 * ROW + HEIGHT)
-
--- -- A number that can be edited
--- subGUI.label(0, 0, WIDTH, HEIGHT, "Number:")
--- subGUI.number(COL2s, 0, WIDTH, HEIGHT, 0)
-
--- -- A drop-down with physical switches
--- subGUI.label(0, ROW, WIDTH, HEIGHT, "Drop-down:")
--- labelDropDown = subGUI.label(0, 2 * ROW, 2 * WIDTH, HEIGHT, "")
-
--- local dropDownIndices = { }
--- local dropDownItems = { }
--- local lastSwitch = getSwitchIndex(CHAR_TRIM .. "Rl") - 1
-
--- for i, s in switches(-lastSwitch, lastSwitch) do
---   if i ~= 0 then 
---     local j = #dropDownIndices + 1
---     dropDownIndices[j] = i
---     dropDownItems[j] = s
---   end
--- end
-
--- local function dropDownChange(dropDown)
---   local i = dropDown.selected
---   labelDropDown.title = "Selected switch: " .. dropDownItems[i] .. " [" .. dropDownIndices[i] .. "]"
--- end
-
--- local dropDown = subGUI.dropDown(COL2s, ROW, WIDTH, HEIGHT, dropDownItems, #dropDownItems / 2 + 1, dropDownChange)
--- dropDownChange(dropDown)
-
--- Menu that does nothing
--- gui.label(COL4, TOP, WIDTH, HEIGHT, "Menu", BOLD)
-
--- local menuItems = {
---   "First",
---   "Second",
---   "Third",
---   "Fourth",
---   "Fifth",
---   "Sixth",
---   "Seventh",
---   "Eighth",
---   "Ninth",
---   "Tenth"
--- }
-
--- gui.menu(COL4, TOP + ROW, WIDTH, 5 * ROW, menuItems, function(menu) playNumber(menu.selected, 0) end)
-
--- Horizontal slider
--- gui.label(COL1, TOP + 6 * ROW, WIDTH, HEIGHT, "Horizontal slider:", BOLD)
--- local horizontalSliderLabel = gui.label(COL1 + 2 * WIDTH, TOP + 7 * ROW, 30, HEIGHT, "", RIGHT)
-
--- local function horizontalSliderCallBack(slider)
---   horizontalSliderLabel.title = slider.value
--- end
-
--- local horizontalSlider = gui.horizontalSlider(COL1, TOP + 7 * ROW + HEIGHT / 2, 2 * WIDTH, 0, -20, 20, 1, horizontalSliderCallBack)
--- horizontalSliderCallBack(horizontalSlider)
-
--- Toggle button
--- local toggleButton = gui.toggleButton(COL3, TOP + 7 * ROW, WIDTH, HEIGHT, "Border", false, nil)
-
--- Prompt showing About text
-local aboutPage = 1
-local aboutText = {
-  "LibGUI is a Lua library for creating graphical user interfaces for Lua widgets on EdgeTX transmitters with color screens. " ..
-  "It is a code library embedded in a widget. Since all Lua widgets are always loaded into memory, whether they are used or not, " ..
-  "the global function named 'loadGUI()', defined in the 'main.lua' file of this widget, is always available to be used by other widgets.",
-  "The library code is implemented in the 'libgui.lua' file of this widget. This code is loaded on demand, i.e. it is only loaded if " ..
-  "loadGUI() is called by a client widget to create a new libGUI Lua table object. That way, the library is not using much of " ..
-  "the radio's memory unless it is being used. And since it is all Lua code, you can inspect the file yourself, if you are curious " ..
-  "or you have found a problem.",
-  "When you add the widget to your radio's screen, then this demo is loaded. It is implemented in the 'loadable.lua' file of this " ..
-  "widget. Hence, like the LibGUI library itself, it does not waste your radio's memory, unless it is being used. And you can view " ..
-  "the 'loadable.lua' file in the widget folder to see for yourself how this demo is loading LibGUI and using it, so you can start " ..
-  "creating your own awesome widgets!",
-   "Copyright (C) EdgeTX\n\nLicensed under GNU Public License V2:\nwww.gnu.org/licenses/gpl-2.0.html\n\nAuthored by Jesper Frickmann."
-}
 
 local logViewer = libGUI.newGUI()
 
@@ -460,12 +378,7 @@ function logViewer.fullScreenRefresh()
       data_field[9] .. ": " .. extract[16] .. " -> " .. extract[17] .. "[dB]\n" ..
       data_field[10] .. ": " .. extract[18] .. " -> " .. extract[19] .. "[%]"
       , flags)
-
-  -- lcd.drawTextLines(50, 70, LCD_W - 120, LCD_H - 110, aboutText[aboutPage])
 end
-
--- Button showing Log Viewer prompt
--- gui.button(COL4, TOP + 7 * ROW, WIDTH, HEIGHT, "About", function() gui.showPrompt(logViewer) end)
 
 -- Make a dismiss button from a custom element
 local custom2 = logViewer.custom({ }, LCD_W - 65, 36, 20, 20)
@@ -484,62 +397,57 @@ function custom2.onEvent(event, touchState)
   end
 end
 
+local sub_gui = libGUI.newGUI()
 -- Add a vertical slider to scroll pages
 local function verticalSliderCallBack(slider)
-  aboutPage = #aboutText + 1 - slider.value
-end
+  sub_gui = libGUI.newGUI()
 
-local verticalSlider = gui.verticalSlider(LCD_W - 20, 60, LCD_H - 80, #aboutText, 1, #aboutText, 1, verticalSliderCallBack)
+  selected_log_file_index = model_log_file_count + 1 - slider.value
+  local y_position = 20
+  local local_file_index = 0
+  for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
+    if selected_log_file_index == local_file_index then
+      sub_gui.label(30,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
+      sub_gui.label(70,  y_position + 40, 50, HEIGHT, log_file_name)
 
-local y_position = 20
-for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
-  if data.flight_count ~= 0 and log_file_name then
-      if display_log_flag then
-          --View the log contents
-          -- draw_log_content(40, 55, string.format(sele_number) .. "#  " .. string.sub(data.logs[sele_number], 4, 11), data.logs[sele_number], telemetry_value_color_flag)
-      else
-          gui.label(30,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
-          gui.label(70,  y_position + 40, 50, HEIGHT, log_file_name)
-
-          gui.label(270, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
-          gui.label(370, y_position + 40, 30, HEIGHT, data.flight_count)
-        
-          -- Flights
+      sub_gui.label(270, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
+      sub_gui.label(370, y_position + 40, 30, HEIGHT, data.flight_count)
+    
+      -- Flights
+      xs = 30
+      ys = y_position + 100
+      --Log menu
+      for m = 0, data.flight_count - 1 do
+        if m % 7 == 0 then
           xs = 30
-          ys = y_position + 100
-          --Log menu
-          for m = 0, data.flight_count - 1 do
-            if m % 7 == 0 then
-              xs = 30
-              if m > 0 then
-                ys = ys + 35
-                y_position= y_position + 65
-              end
-            else
-              xs = xs + 58
-            end
-            gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
-              function()
-                selected_flight = { index = m, log_file = log_file_name }
-                gui.showPrompt(logViewer) 
-              end
-            )
+          if m > 0 then
+            ys = ys + 35
+            y_position= y_position + 65
+          end
+        else
+          xs = xs + 58
         end
+        sub_gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
+          function()
+            selected_flight = { index = m, log_file = log_file_name }
+            sub_gui.showPrompt(logViewer) 
+          end
+        )
       end
-    break
+      break
+    else 
+      local_file_index = local_file_index + 1
+    end
   end
 end
 
+local verticalSlider = gui.verticalSlider(LCD_W - 20, 60, LCD_H - 80, model_log_file_count, 1, model_log_file_count, 1, verticalSliderCallBack)
+verticalSliderCallBack(verticalSlider)
 
 -- Draw on the screen before adding gui elements
 function gui.fullScreenRefresh()
-  -- Draw header
   lcd.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
   lcd.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
-  -- Border
-  -- if toggleButton.value then
-  --   lcd.drawRectangle(0, HEADER, LCD_W, LCD_H - HEADER, libGUI.colors.edit, 5)
-  -- end
 end
 
 -- Draw in widget mode
@@ -839,13 +747,12 @@ function libGUI.widgetRefresh()
     lcd.drawText(xs + 12, ys + y_offset, string.format("%02d", model_flight_stats.flight_count), DBLSIZE + telemetry_value_color_flag)
     lcd.drawText(xs + 45 + 53, ys, "N", telemetry_label_color_flag)  
   end
-  -- lcd.drawRectangle(0, 0, zone.w, zone.h, libGUI.colors.primary3)
-  -- lcd.drawText(zone.w / 2, zone.h / 2, protocol_str, DBLSIZE + CENTER + VCENTER + libGUI.colors.primary3)
 end
 
 -- This function is called from the refresh(...) function in the main script
 function widget.refresh(event, touchState)
   gui.run(event, touchState)
+  sub_gui.run(event, touchState)
 end
 
 -- Return to the create(...) function in the main script
