@@ -80,6 +80,13 @@ local options = {
   { "VoltageDisplayMode",  VALUE,  0,    0, 2 }
 }
 
+local function get_todays_log_file_name() 
+  return '[' .. model_name .. ']' ..
+      string.format("%d", getDateTime().year) ..
+      string.format("%02d", getDateTime().mon) ..
+      string.format("%02d", getDateTime().day) .. ".log"
+end
+
 -- Sorting table
 local function spairs(t, order)
   -- collect the keys
@@ -120,10 +127,12 @@ end
 local function read_all_model_logs(current_model_name)
   local total_flight_time = 0
   local flight_count = 0
+
+  local todays_log_file_name = get_todays_log_file_name()
+
   for fname in dir("/WIDGETS/" .. NAME .. "/logs/") do
     if string.find(fname, current_model_name) then
-      model_log_file_count = model_log_file_count + 1
-
+      
       file_obj = io.open("/WIDGETS/" .. NAME .. "/logs/" .. fname, "r")
       line = io.read(file_obj, LOG_INFO_LEN + 1)
       
@@ -135,22 +144,26 @@ local function read_all_model_logs(current_model_name)
       total_seconds = total_seconds + tonumber(string.sub(line, 15, 16)) * 60
       total_seconds = total_seconds + tonumber(string.sub(line, 18, 19))
 
-      current_log_file_flight_count = tonumber(string.sub(line, 21, 22))
-      total_flight_time = total_flight_time + total_seconds
-      flight_count = flight_count + current_log_file_flight_count
+      if total_seconds > 0 then
+        model_log_file_count = model_log_file_count + 1
 
-      current_read_count = 0
-      log_data[fname] = {
-        flight_count = current_log_file_flight_count,
-        logs = {}
-      }
-      while true do
-          log_data[fname]["logs"][current_read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
-          if #log_data[fname]["logs"][current_read_count] == 0 then
-              break
-          else
-              current_read_count = current_read_count + 1
-          end
+        current_log_file_flight_count = tonumber(string.sub(line, 21, 22))
+        total_flight_time = total_flight_time + total_seconds
+        flight_count = flight_count + current_log_file_flight_count
+
+        current_read_count = 0
+        log_data[fname] = {
+          flight_count = current_log_file_flight_count,
+          logs = {}
+        }
+        while true do
+            log_data[fname]["logs"][current_read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
+            if #log_data[fname]["logs"][current_read_count] == 0 then
+                break
+            else
+                current_read_count = current_read_count + 1
+            end
+        end
       end
       io.close(file_obj)
     end
@@ -169,7 +182,7 @@ local widget = {
   options = options
 }
 
-local function widget_create()
+local function init_logic()
   local module = {}
   --Head speed ratio
   --local _, _, major, minor, rev, osname = getVersion()
@@ -230,10 +243,7 @@ local function widget_create()
   pic_obj = Bitmap.open("/WIDGETS/" .. NAME .. "/a.png")
 
   --log
-  file_name = '[' .. model_name .. ']' ..
-      string.format("%d", getDateTime().year) ..
-      string.format("%02d", getDateTime().mon) ..
-      string.format("%02d", getDateTime().day) .. ".log"
+  file_name = get_todays_log_file_name()
   file_path = "/WIDGETS/" .. NAME .. "/logs/" .. file_name
 
   local file_info = fstat(file_path)
@@ -273,7 +283,7 @@ local function widget_create()
   model_flight_stats = read_all_model_logs(model_name)
 end
 
-widget_create()
+init_logic()
 
 -- Miscellaneous constants
 local HEADER = 40
