@@ -46,8 +46,8 @@ local seconds = { 0, 0 }
 local play_speed = 0
 
 local model_flight_stats = {}
-local selected_flight = { 
-  index = 0, 
+local selected_session_date = { 
+  flight_index = 0, 
   log_file = "" 
 }
 local model_log_file_count = 0
@@ -107,6 +107,14 @@ local function spairs(t, order)
   end
 end
 
+local function parse_log_filename_to_date(log_filename)
+  local flight_session_date = string.match(log_filename, "%](%d+)%.log")
+  local year = string.sub(flight_session_date, 1, 4)
+  local month = string.sub(flight_session_date, 5, 6)
+  local day = string.sub(flight_session_date, 7, 8)
+  return day .. "/" .. month .. "/" .. year
+end
+
 --fuel_percentage
 local function fuel_percentage(xs, ys, capa, number)
   local color = lcd.RGB(255 - number * 2.55, number * 2.55, 0)
@@ -121,8 +129,8 @@ local function fuel_percentage(xs, ys, capa, number)
   lcd.drawText(xs, ys + 15, string.format("%dmAh", capa), CENTER + VCENTER + telemetry_value_color_flag)
 end
 
---read_all_model_logs
-local function read_all_model_logs(current_model_name)
+--process_logs_startup
+local function process_logs_startup(current_model_name)
   local total_flight_time = 0
   local running_flight_count = 0
   local todays_log_file_name = get_todays_log_file_name()
@@ -154,6 +162,11 @@ local function read_all_model_logs(current_model_name)
         current_read_count = 0
         log_data[fname] = {
           flight_count = current_log_file_flight_count,
+          flight_time = {
+            hours = string.format("%02d", math.floor(log_flight_time / 3600)),
+            minutes = string.format("%02d", math.floor(log_flight_time % 3600 / 60)),
+            seconds = string.format("%02d", log_flight_time % 3600 % 60),
+          },
           logs = {}
         }
         while true do
@@ -258,7 +271,7 @@ local function init_logic()
     io.write(file_obj, log_info)
     io.close(file_obj)
   end
-  model_flight_stats = read_all_model_logs(model_name)
+  model_flight_stats = process_logs_startup(model_name)
 end
 
 init_logic()
@@ -268,11 +281,6 @@ local HEADER = 40
 local WIDTH  = 100
 local COL1   = 10
 local COL2   = 130
-local COL3   = 250
-local COL4   = 370
-local COL2s  = 120
-local TOP    = 44
-local ROW    = 28
 local HEIGHT = 24
 
 -- The widget table will be returned to the main script
@@ -310,15 +318,37 @@ local function timerChange(steps, timer)
   end
 end
 
-local logViewer = libGUI.newGUI()
+local FlightViewer = libGUI.newGUI()
 
-function logViewer.fullScreenRefresh()
+FlightViewer.button(LCD_W - 35, LCD_H/2 - 12, 25, 25, " > ", 
+  function()
+    local newFlightIndex = selected_session_date.flight_index + 1
+    selected_session_date = { flight_index = newFlightIndex, log_file = selected_session_date.log_file }
+  end
+)
+
+
+FlightViewer.button(10, LCD_H/2 - 12, 25, 25, " < ", 
+  function()
+    local newFlightIndex = selected_session_date.flight_index - 1
+    selected_session_date = { flight_index = newFlightIndex, log_file = selected_session_date.log_file }
+  end
+)
+
+
+function FlightViewer.fullScreenRefresh()
   lcd.drawFilledRectangle(40, 30, LCD_W - 80, 30, COLOR_THEME_SECONDARY1)
-  lcd.drawText(50, 45, "Flight: " .. selected_flight.index + 1, VCENTER + MIDSIZE + libGUI.colors.primary2)
+  lcd.drawText(50, 45,  parse_log_filename_to_date(selected_session_date.log_file) .. " - " .. "Flight: " .. selected_session_date.flight_index + 1, VCENTER + MIDSIZE + libGUI.colors.primary2)
   lcd.drawFilledRectangle(40, 60, LCD_W - 80, LCD_H - 90, libGUI.colors.primary2)
   lcd.drawRectangle(40, 30, LCD_W - 80, LCD_H - 60, libGUI.colors.primary1, 2)
 
-  local message = log_data[selected_flight.log_file]["logs"][selected_flight.index]
+  -- Draw the backdrop
+  lcd.drawFilledRectangle(0, 0, 40, LCD_H, BLACK, 1)
+  lcd.drawFilledRectangle(LCD_W - 40, 0, 40, LCD_H, BLACK, 1)
+  lcd.drawFilledRectangle(0, 0, LCD_W, 30, BLACK, 1)
+  lcd.drawFilledRectangle(0, LCD_H - 30, LCD_W, 30, BLACK, 1)
+
+  local message = log_data[selected_session_date.log_file]["logs"][selected_session_date.flight_index]
   local extract = {}
   local value
   local index, length = 4, 8
@@ -387,17 +417,17 @@ function logViewer.fullScreenRefresh()
 end
 
 -- Make a dismiss button from a custom element
-local custom2 = logViewer.custom({ }, LCD_W - 65, 36, 20, 20)
+local CustomCloseButtonFlightViewer = FlightViewer.custom({ }, LCD_W - 65, 36, 20, 20)
 
-function custom2.draw(focused)
+function CustomCloseButtonFlightViewer.draw(focused)
   lcd.drawRectangle(LCD_W - 65, 36, 20, 20, libGUI.colors.primary2)
   lcd.drawText(LCD_W - 55, 45, "X", MIDSIZE + CENTER + VCENTER + libGUI.colors.primary2)
   if focused then
-    custom2.drawFocus()
+    CustomCloseButtonFlightViewer.drawFocus()
   end
 end
 
-function custom2.onEvent(event, touchState)
+function CustomCloseButtonFlightViewer.onEvent(event, touchState)
   if event == EVT_VIRTUAL_ENTER then
     gui.dismissPrompt()
   end
@@ -409,23 +439,28 @@ local function verticalSliderCallBack(slider)
   sub_gui = libGUI.newGUI()
 
   selected_log_file_index = model_log_file_count + 1 - slider.value
-  local y_position = 20
+  -- gui.verticalSlider(LCD_W - 20, 60, LCD_H - 80, model_log_file_count + 1 - selected_log_file_index, 1, model_log_file_count, 1, verticalSliderCallBack)
+
+  local y_position = 10
   local local_file_index = 0
   for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
     if selected_log_file_index == local_file_index then
-      sub_gui.label(30,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
-      sub_gui.label(70,  y_position + 40, 50, HEIGHT, log_file_name)
+      sub_gui.label(15,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
+      sub_gui.label(55,  y_position + 40, 50, HEIGHT, parse_log_filename_to_date(log_file_name))
 
-      sub_gui.label(270, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
-      sub_gui.label(370, y_position + 40, 30, HEIGHT, data.flight_count)
+      sub_gui.label(170, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
+      sub_gui.label(265, y_position + 40, 30, HEIGHT, data.flight_count)
+
+      sub_gui.label(15, y_position + 65, 30, HEIGHT, "Flight time: ", BOLD)
+      sub_gui.label(100, y_position + 65, 30, HEIGHT, data.flight_time.hours .. "h " ..  data.flight_time.minutes .. "m " ..  data.flight_time.seconds .. "s")
     
       -- Flights
-      xs = 30
-      ys = y_position + 100
+      xs = 15
+      ys = y_position + 120
       --Log menu
       for m = 0, data.flight_count - 1 do
         if m % 7 == 0 then
-          xs = 30
+          xs = 15
           if m > 0 then
             ys = ys + 35
             y_position= y_position + 65
@@ -435,8 +470,8 @@ local function verticalSliderCallBack(slider)
         end
         sub_gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
           function()
-            selected_flight = { index = m, log_file = log_file_name }
-            sub_gui.showPrompt(logViewer) 
+            selected_session_date = { flight_index = m, log_file = log_file_name }
+            sub_gui.showPrompt(FlightViewer) 
           end
         )
       end
