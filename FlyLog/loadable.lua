@@ -34,13 +34,10 @@ local time_os = 0
 local ring_data = 0
 local sync_fuel_value = 0
 local wait_count = 0
-local pic_obj
 local file_name = ""
 local file_path = ""
 local file_obj
-local log_info = ""
 local log_data = {}
-local sele_number = 0
 local second = { 0, 0, 0 }
 local total_second = 0
 local hours = 0
@@ -55,6 +52,7 @@ local selected_flight = {
 }
 local model_log_file_count = 0
 local selected_log_file_index = 0
+local total_seconds = 0
 
 --Flag
 local paint_color_flag = BLACK
@@ -104,7 +102,7 @@ local function spairs(t, order)
   return function()
     i = i + 1
     if keys[i] then
-        return keys[i], t[keys[i]]
+      return keys[i], t[keys[i]]
     end
   end
 end
@@ -126,13 +124,13 @@ end
 --read_all_model_logs
 local function read_all_model_logs(current_model_name)
   local total_flight_time = 0
-  local flight_count = 0
-
+  local running_flight_count = 0
   local todays_log_file_name = get_todays_log_file_name()
+  local log_flight_time = 0
 
   for fname in dir("/WIDGETS/" .. NAME .. "/logs/") do
+    log_flight_time = 0
     if string.find(fname, current_model_name) then
-      
       file_obj = io.open("/WIDGETS/" .. NAME .. "/logs/" .. fname, "r")
       line = io.read(file_obj, LOG_INFO_LEN + 1)
       
@@ -140,16 +138,18 @@ local function read_all_model_logs(current_model_name)
       minutes[2] = string.sub(line, 15, 16)
       seconds[2] = string.sub(line, 18, 19)
     
-      total_seconds = tonumber(string.sub(line, 12, 13)) * 3600
-      total_seconds = total_seconds + tonumber(string.sub(line, 15, 16)) * 60
-      total_seconds = total_seconds + tonumber(string.sub(line, 18, 19))
+      log_flight_time = tonumber(string.sub(line, 12, 13)) * 3600
+      log_flight_time = log_flight_time + tonumber(string.sub(line, 15, 16)) * 60
+      log_flight_time = log_flight_time + tonumber(string.sub(line, 18, 19))
 
-      if total_seconds > 0 then
+      total_seconds = total_seconds + log_flight_time
+
+      if log_flight_time > 0 then
         model_log_file_count = model_log_file_count + 1
 
         current_log_file_flight_count = tonumber(string.sub(line, 21, 22))
-        total_flight_time = total_flight_time + total_seconds
-        flight_count = flight_count + current_log_file_flight_count
+        total_flight_time = total_flight_time + log_flight_time
+        running_flight_count = running_flight_count + current_log_file_flight_count
 
         current_read_count = 0
         log_data[fname] = {
@@ -157,22 +157,25 @@ local function read_all_model_logs(current_model_name)
           logs = {}
         }
         while true do
-            log_data[fname]["logs"][current_read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
-            if #log_data[fname]["logs"][current_read_count] == 0 then
-                break
-            else
-                current_read_count = current_read_count + 1
-            end
+          log_data[fname]["logs"][current_read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
+          if #log_data[fname]["logs"][current_read_count] == 0 then
+            break
+          else
+            current_read_count = current_read_count + 1
+          end
         end
       end
       io.close(file_obj)
+      if log_flight_time == 0 and fname ~= todays_log_file_name then
+        del("/WIDGETS/" .. NAME .. "/logs/" .. fname)
+      end
     end
   end
   return {
     total_minutes = string.format("%02d", math.floor(total_flight_time % 3600 / 60)),
     total_seconds = string.format("%02d", total_flight_time % 3600 % 60),
     total_hours = string.format("%02d", math.floor(total_flight_time / 3600)),
-    flight_count = flight_count
+    flight_count = running_flight_count
   }
 end
 
@@ -188,7 +191,6 @@ local function init_logic()
   --local _, _, major, minor, rev, osname = getVersion()
 
   --Variable initialization
-  sele_number = 1
   for i = 1, #second do
     second[i] = 0
   end
@@ -239,39 +241,15 @@ local function init_logic()
     end
   end
 
-  --Loading pic
-  pic_obj = Bitmap.open("/WIDGETS/" .. NAME .. "/a.png")
-
   --log
-  file_name = get_todays_log_file_name()
-  file_path = "/WIDGETS/" .. NAME .. "/logs/" .. file_name
+  local filename = get_todays_log_file_name()
+  file_path = "/WIDGETS/" .. NAME .. "/logs/" .. filename
 
   local file_info = fstat(file_path)
-  local read_count = 1
-  if file_info ~= nil then
-    if file_info.size > 0 then
-      file_obj = io.open(file_path, "r")
-      log_info = io.read(file_obj, LOG_INFO_LEN + 1)
-      log_data[file_name] = {}
-      while true do
-        log_data[file_name][read_count] = io.read(file_obj, LOG_DATA_LEN + 1)
-        if #log_data[file_name][read_count] == 0 then
-          break
-        else
-          read_count = read_count + 1
-        end
-      end
-      io.close(file_obj)
-      hours = string.sub(log_info, 12, 13)
-      minutes[2] = string.sub(log_info, 15, 16)
-      seconds[2] = string.sub(log_info, 18, 19)
-      total_second = tonumber(string.sub(log_info, 12, 13)) * 3600
-      total_second = total_second + tonumber(string.sub(log_info, 15, 16)) * 60
-      total_second = total_second + tonumber(string.sub(log_info, 18, 19))
-    end
-  else
+  log_data[filename] = {}
+  if file_info == nil then
     file_obj = io.open(file_path, "w")
-    log_info =
+    local log_info =
         string.format("%d", getDateTime().year) .. '/' ..
         string.format("%02d", getDateTime().mon) .. '/' ..
         string.format("%02d", getDateTime().day) .. '|' ..
@@ -373,7 +351,7 @@ function logViewer.fullScreenRefresh()
   lcd.drawText(localX + 5, localY + 30,
     "Time: \n"..
     "Capacity: \n" ..
-    "Used Bat: \n" ..
+    "Bat used: \n" ..
     "HSpd: \n" ..
     "Throttle: \n" ..
     "Current: \n" ..
@@ -597,12 +575,12 @@ function libGUI.widgetRefresh()
       get_value = getValue(field_id[k][1])
       --CRSF
       if protocol_type == 0 then
-          if k == data_hag[1] then
-              get_value = get_value * data_hag[2];
-          end
-          if k == data_ptch[1] then
-              get_value = get_value * data_ptch[2];
-          end
+        if k == data_hag[1] then
+          get_value = get_value * data_hag[2];
+        end
+        if k == data_ptch[1] then
+          get_value = get_value * data_ptch[2];
+        end
       end
       value_min_max[k][1] = get_value
       if init_sync_flag then
@@ -610,14 +588,14 @@ function libGUI.widgetRefresh()
         value_min_max[k][3] = get_value
         --Ring
         if ring_start_flag == false and value_min_max[5][1] > 0 then
-            sync_fuel_value = sync_fuel_value + 1
-            if sync_fuel_value > 29 then
-                wait_count = 0
-                ring_start_flag = true
-                ring_end_flag = false
-            end
+          sync_fuel_value = sync_fuel_value + 1
+          if sync_fuel_value > 29 then
+            wait_count = 0
+            ring_start_flag = true
+            ring_end_flag = false
+          end
         else
-            sync_fuel_value = 0
+          sync_fuel_value = 0
         end
       else
         if batter_on_flag and get_value ~= 0 then
@@ -646,15 +624,15 @@ function libGUI.widgetRefresh()
           lcd.drawText(xs, ys + y_offset, string.format(data_format[k], value_min_max[k][1]), DBLSIZE + telemetry_value_color_flag)                                                         --Real time
           lcd.drawText(xs + 85, ys + y_offset, string.format(data_format[k], value_min_max[k][2]), telemetry_value_color_flag)                                                              --Max
           if k == 2 then
-              lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%dW", power_max[2]), telemetry_value_color_flag)                                                                     --Power
+            lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%dW", power_max[2]), telemetry_value_color_flag)                                                                     --Power
           elseif k == 3 then
-              if protocol_type == 1 then                                                                                                                                        --FPORT
-                  lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%.f%%", (getOutputValue(widget.options.ThrottleChannel - 210) + 1024) / 2048 * 100), telemetry_value_color_flag) --Throttle [Remote control channel value]
-              else                                                                                                                                                              --CRSF
-                  lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%d%%", value_min_max[11][1]), telemetry_value_color_flag)                                                        --Throttle [FC real-time value]
-              end
+            if protocol_type == 1 then                                                                                                                                        --FPORT
+              lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%.f%%", (getOutputValue(widget.options.ThrottleChannel - 210) + 1024) / 2048 * 100), telemetry_value_color_flag) --Throttle [Remote control channel value]
+            else                                                                                                                                                              --CRSF
+              lcd.drawText(xs + 85, ys + y_offset + 15, string.format("%d%%", value_min_max[11][1]), telemetry_value_color_flag)                                                        --Throttle [FC real-time value]
+            end
           else
-              lcd.drawText(xs + 85, ys + y_offset + 15, string.format(data_format[k], value_min_max[k][3]), telemetry_value_color_flag) --Min
+            lcd.drawText(xs + 85, ys + y_offset + 15, string.format(data_format[k], value_min_max[k][3]), telemetry_value_color_flag) --Min
           end
         end
       end
@@ -728,21 +706,21 @@ function libGUI.widgetRefresh()
     lcd.drawLine(xs + 285, ys + 20, xs + 285, ye - 6, SOLID, display_gird_color_flag)
     --Fuel Percentage
     if ring_start_flag and ring_end_flag == false then
-        if ring_data >= value_min_max[5][1] then
-            wait_count = wait_count + 1
-            if wait_count > 99 then
-                ring_end_flag = true
-            end
-        else
-            ring_data = ring_data + 1
-            wait_count = 0
+      if ring_data >= value_min_max[5][1] then
+        wait_count = wait_count + 1
+        if wait_count > 99 then
+            ring_end_flag = true
         end
+      else
+        ring_data = ring_data + 1
+        wait_count = 0
+      end
     else
-        if ring_end_flag then
-            ring_data = value_min_max[5][1]
-        else
-            ring_data = 0
-        end
+      if ring_end_flag then
+        ring_data = value_min_max[5][1]
+      else
+        ring_data = 0
+      end
     end
     fuel_percentage(xs + 70, ys + 90, value_min_max[4][1], ring_data)
 
