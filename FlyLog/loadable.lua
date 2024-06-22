@@ -433,13 +433,9 @@ local function renderFlightViewer()
   function gui.fullScreenRefresh()
     lcd.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
     lcd.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
-    lcd.drawLine(0, 85, LCD_W, 85, SOLID, COLOR_THEME_SECONDARY1)
-    -- lcd.drawFilledRectangle(0, 85, 50, LCD_H - 85, COLOR_THEME_SECONDARY1)
-    -- lcd.drawFilledRectangle(LCD_W - 50, 85, 50, LCD_H - 85, COLOR_THEME_SECONDARY1)
-    lcd.drawFilledRectangle(0, 85, LCD_W, LCD_H - 85, COLOR_THEME_SECONDARY1)
-    lcd.drawLine(50, 85, 50, LCD_H, SOLID, libGUI.colors.primary2)
-    lcd.drawLine(LCD_W - 50, 85, LCD_W - 50, LCD_H, SOLID, libGUI.colors.primary2)
-
+    lcd.drawFilledRectangle(0, 85, LCD_W, LCD_H - 120, LIGHTWHITE)
+    lcd.drawFilledRectangle(0, 85, 50, LCD_H - 85, libGUI.colors.primary2)
+    lcd.drawFilledRectangle(LCD_W - 50, 85, 50, LCD_H - 50, libGUI.colors.primary2)
   end
   gui.fullScreenRefresh()
 
