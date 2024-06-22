@@ -51,7 +51,7 @@ local selected_session_date = {
   log_file = "" 
 }
 local model_log_file_count = 0
-local selected_log_file_index = 0
+local selected_log_file_index = 1
 local total_seconds = 0
 
 --Flag
@@ -310,14 +310,6 @@ function custom.onEvent(event, touchState)
   end
 end
 
-local function timerChange(steps, timer)
-  if steps < 0 then
-    return (math.ceil(timer.value / 60) + steps) * 60
-  else
-    return (math.floor(timer.value / 60) + steps) * 60
-  end
-end
-
 local FlightViewer = libGUI.newGUI()
 
 FlightViewer.button(LCD_W - 35, LCD_H/2 - 12, 25, 25, " > ", 
@@ -326,7 +318,6 @@ FlightViewer.button(LCD_W - 35, LCD_H/2 - 12, 25, 25, " > ",
     selected_session_date = { flight_index = newFlightIndex, log_file = selected_session_date.log_file }
   end
 )
-
 
 FlightViewer.button(10, LCD_H/2 - 12, 25, 25, " < ", 
   function()
@@ -343,10 +334,12 @@ function FlightViewer.fullScreenRefresh()
   lcd.drawRectangle(40, 30, LCD_W - 80, LCD_H - 60, libGUI.colors.primary1, 2)
 
   -- Draw the backdrop
-  lcd.drawFilledRectangle(0, 0, 40, LCD_H, BLACK, 1)
-  lcd.drawFilledRectangle(LCD_W - 40, 0, 40, LCD_H, BLACK, 1)
-  lcd.drawFilledRectangle(0, 0, LCD_W, 30, BLACK, 1)
-  lcd.drawFilledRectangle(0, LCD_H - 30, LCD_W, 30, BLACK, 1)
+  lcd.drawFilledRectangle(0, 0, 40, LCD_H, LIGHTGREY, 1)
+
+  lcd.drawFilledRectangle(LCD_W - 40, 30, 40, LCD_H, LIGHTGREY, 1)
+
+  lcd.drawFilledRectangle(40, 0, LCD_W-40, 30, LIGHTGREY, 1)
+  lcd.drawFilledRectangle(40, LCD_H - 30, LCD_W-40, 30, LIGHTGREY, 1)
 
   local message = log_data[selected_session_date.log_file]["logs"][selected_session_date.flight_index]
   local extract = {}
@@ -433,34 +426,66 @@ function CustomCloseButtonFlightViewer.onEvent(event, touchState)
   end
 end
 
-local sub_gui = libGUI.newGUI()
--- Add a vertical slider to scroll pages
-local function verticalSliderCallBack(slider)
-  sub_gui = libGUI.newGUI()
+local function renderFlightViewer()
+  gui = libGUI.newGUI()
 
-  selected_log_file_index = model_log_file_count + 1 - slider.value
-  -- gui.verticalSlider(LCD_W - 20, 60, LCD_H - 80, model_log_file_count + 1 - selected_log_file_index, 1, model_log_file_count, 1, verticalSliderCallBack)
+  -- Draw on the screen before adding gui elements
+  function gui.fullScreenRefresh()
+    lcd.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
+    lcd.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
+    lcd.drawLine(0, 85, LCD_W, 85, SOLID, COLOR_THEME_SECONDARY1)
+    -- lcd.drawFilledRectangle(0, 85, 50, LCD_H - 85, COLOR_THEME_SECONDARY1)
+    -- lcd.drawFilledRectangle(LCD_W - 50, 85, 50, LCD_H - 85, COLOR_THEME_SECONDARY1)
+    lcd.drawFilledRectangle(0, 85, LCD_W, LCD_H - 85, COLOR_THEME_SECONDARY1)
+    lcd.drawLine(50, 85, 50, LCD_H, SOLID, libGUI.colors.primary2)
+    lcd.drawLine(LCD_W - 50, 85, LCD_W - 50, LCD_H, SOLID, libGUI.colors.primary2)
+
+  end
+  gui.fullScreenRefresh()
+
+  if selected_log_file_index < model_log_file_count then
+    gui.button(LCD_W - 40, 100, 30, 30, ">", 
+      function()
+        selected_log_file_index = selected_log_file_index + 1
+        renderFlightViewer()
+      end
+    )
+  end
+
+  if selected_log_file_index > 1 then
+    gui.button(10, 100, 30, 30, "<", 
+      function()
+        selected_log_file_index = selected_log_file_index - 1
+        renderFlightViewer()
+      end
+    )
+  end
 
   local y_position = 10
   local local_file_index = 0
+
+  local x_offset = 55
   for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
     if selected_log_file_index == local_file_index then
-      sub_gui.label(15,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
-      sub_gui.label(55,  y_position + 40, 50, HEIGHT, parse_log_filename_to_date(log_file_name))
+      gui.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
+      gui.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
 
-      sub_gui.label(170, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
-      sub_gui.label(265, y_position + 40, 30, HEIGHT, data.flight_count)
+      gui.label(15,  y_position + 40, 20, HEIGHT, "Date: ", BOLD)
+      gui.label(55,  y_position + 40, 50, HEIGHT, parse_log_filename_to_date(log_file_name))
 
-      sub_gui.label(15, y_position + 65, 30, HEIGHT, "Flight time: ", BOLD)
-      sub_gui.label(100, y_position + 65, 30, HEIGHT, data.flight_time.hours .. "h " ..  data.flight_time.minutes .. "m " ..  data.flight_time.seconds .. "s")
-    
+      gui.label(160, y_position + 40, 30, HEIGHT, "Flight count: ", BOLD)
+      gui.label(255, y_position + 40, 30, HEIGHT, data.flight_count)
+
+      gui.label(265 + 15, y_position + 40, 30, HEIGHT, "Flight time: ", BOLD)
+      gui.label(265 + 100, y_position + 40, 30, HEIGHT, data.flight_time.hours .. "h " ..  data.flight_time.minutes .. "m " ..  data.flight_time.seconds .. "s")
+
       -- Flights
-      xs = 15
-      ys = y_position + 120
+      xs = 15 + x_offset
+      ys = y_position + 90
       --Log menu
       for m = 0, data.flight_count - 1 do
-        if m % 7 == 0 then
-          xs = 15
+        if m % 6 == 0 then
+          xs = 15 + x_offset
           if m > 0 then
             ys = ys + 35
             y_position= y_position + 65
@@ -468,10 +493,10 @@ local function verticalSliderCallBack(slider)
         else
           xs = xs + 58
         end
-        sub_gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
+        gui.button(xs, ys, 50, 30, string.sub(data.logs[m], 13, 17), 
           function()
             selected_session_date = { flight_index = m, log_file = log_file_name }
-            sub_gui.showPrompt(FlightViewer) 
+            gui.showPrompt(FlightViewer) 
           end
         )
       end
@@ -482,14 +507,7 @@ local function verticalSliderCallBack(slider)
   end
 end
 
-local verticalSlider = gui.verticalSlider(LCD_W - 20, 60, LCD_H - 80, model_log_file_count, 1, model_log_file_count, 1, verticalSliderCallBack)
-verticalSliderCallBack(verticalSlider)
-
--- Draw on the screen before adding gui elements
-function gui.fullScreenRefresh()
-  lcd.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
-  lcd.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
-end
+renderFlightViewer()
 
 -- Draw in widget mode
 function libGUI.widgetRefresh()
@@ -772,15 +790,15 @@ function libGUI.widgetRefresh()
     ys = ys + line_height
     lcd.drawText(xs + 12, ys, "TFT", telemetry_label_color_flag)
     if tonumber(total_seconds) >= 3600 then
-        lcd.drawText(xs + 45, ys, "H", telemetry_label_color_flag)
-        lcd.drawText(xs + 45 + 53, ys, "M", telemetry_label_color_flag)
-        lcd.drawText(xs + 12, ys + y_offset, model_flight_stats.total_hours, DBLSIZE + telemetry_value_color_flag)
-        lcd.drawText(xs + 65, ys + y_offset, model_flight_stats.total_minutes, DBLSIZE + telemetry_value_color_flag)
+      lcd.drawText(xs + 45, ys, "H", telemetry_label_color_flag)
+      lcd.drawText(xs + 45 + 53, ys, "M", telemetry_label_color_flag)
+      lcd.drawText(xs + 12, ys + y_offset, model_flight_stats.total_hours, DBLSIZE + telemetry_value_color_flag)
+      lcd.drawText(xs + 65, ys + y_offset, model_flight_stats.total_minutes, DBLSIZE + telemetry_value_color_flag)
     else
-        lcd.drawText(xs + 45, ys, "M", telemetry_label_color_flag)
-        lcd.drawText(xs + 45 + 53, ys, "S", telemetry_label_color_flag)
-        lcd.drawText(xs + 12, ys + y_offset, model_flight_stats.total_minutes, DBLSIZE + telemetry_value_color_flag)
-        lcd.drawText(xs + 65, ys + y_offset, model_flight_stats.total_seconds, DBLSIZE + telemetry_value_color_flag)
+      lcd.drawText(xs + 45, ys, "M", telemetry_label_color_flag)
+      lcd.drawText(xs + 45 + 53, ys, "S", telemetry_label_color_flag)
+      lcd.drawText(xs + 12, ys + y_offset, model_flight_stats.total_minutes, DBLSIZE + telemetry_value_color_flag)
+      lcd.drawText(xs + 65, ys + y_offset, model_flight_stats.total_seconds, DBLSIZE + telemetry_value_color_flag)
     end
     --Number of flights
     ys = ys + line_height
@@ -793,7 +811,6 @@ end
 -- This function is called from the refresh(...) function in the main script
 function widget.refresh(event, touchState)
   gui.run(event, touchState)
-  sub_gui.run(event, touchState)
 end
 
 -- Return to the create(...) function in the main script
