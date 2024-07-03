@@ -1,5 +1,5 @@
 --Script information
-local NAME = "FlyLog"
+local NAME = "FlyLogDebug"
 local VERSION = "v1"
 
 --Variable
@@ -62,7 +62,7 @@ local init_sync_flag
 local sync_end_flag
 local spoolup_flag
 local display_log_flag
-local write_en_flag
+local should_write_log
 local sliding_flag
 local ring_start_flag
 local ring_end_flag
@@ -209,7 +209,7 @@ local function init_logic()
   end
   total_second = 0
   --Flag
-  write_en_flag = false
+  should_write_log = false
   sliding_flag = false
   ring_start_flag = false
   ring_end_flag = false
@@ -590,7 +590,7 @@ function libGUI.widgetRefresh()
           end
           if spoolup_flag then
             spoolup_flag = false
-            write_en_flag = true
+            should_write_log = true
           end
         elseif spoolup_flag == false and (get_value == "OFF" or get_value == "SPOOLUP" or get_value == 5) then
           second[1] = 0
@@ -801,6 +801,59 @@ function libGUI.widgetRefresh()
     lcd.drawText(xs + 12, ys, "TFC", telemetry_label_color_flag)
     lcd.drawText(xs + 12, ys + y_offset, string.format("%02d", model_flight_stats.flight_count), DBLSIZE + telemetry_value_color_flag)
     lcd.drawText(xs + 45 + 53, ys, "N", telemetry_label_color_flag)  
+  end
+
+  if should_write_log then
+    local todays_log_file_name = get_todays_log_file_name()
+    logs[todays_log_file_name].flight_count = logs[todays_log_file_name].flight_count + 1
+    log_file_object = io.open(file_path, "w")
+    log_info = string.format("%d", getDateTime().year) .. '/' ..
+      string.format("%02d", getDateTime().mon) .. '/' ..
+      string.format("%02d", getDateTime().day) .. '|' ..
+      hours .. ':' .. minutes[2] .. ':' .. seconds[2] .. '|' ..
+      string.format("%02d", logs[todays_log_file_name].flight_count) .. "\n"
+    io.write(log_file_object, log_info)
+
+    --Write History Log
+    for w = 1, logs[todays_log_file_name].flight_count - 1 do
+      io.write(log_file_object, log_data[todays_log_file_name]["logs"][w])
+    end
+
+    --Write New Log [ 10|16:20:36|04:46|4533|087|2289|159.9|10295|24.9|20.2|+099|+033|+045|+043|-032|-072|-030|-084|100|096|100|12.1|07.4 ]
+    local new_log_entry =  
+      string.format("%02d", fly_number) .. '|' .. --Number
+      string.format("%02d", getDateTime().hour) .. ':' ..
+      string.format("%02d", getDateTime().min) .. ':' ..
+      string.format("%02d", getDateTime().sec) .. '|' ..                --Date time
+      minutes[1] .. ':' .. seconds[1] .. '|' ..                         --Flight time
+      string.format("%04d", value_min_max[4][1] - capa_start) .. '|' .. --Capa used
+      string.format("%03d", fuel_start - value_min_max[5][1]) .. '|' .. --Fuel used
+      string.format("%04d", value_min_max[3][2]) .. '|' ..              --HSpd Max
+      string.format("%05.1f", value_min_max[2][2]) .. '|' ..            --Current Max
+      string.format("%05d", power_max[1]) .. '|' ..                     --Power Max
+      string.format("%04.1f", value_min_max[1][2]) .. '|' ..            --Battery Max
+      string.format("%04.1f", value_min_max[1][3]) .. '|' ..            --Battery Min
+      string.format("%+04d", value_min_max[6][2]) .. '|' ..             --ESC Max
+      string.format("%+04d", value_min_max[6][3]) .. '|' ..             --ESC Min
+      string.format("%+04d", value_min_max[7][2]) .. '|' ..             --MCU Max
+      string.format("%+04d", value_min_max[7][3]) .. "|" ..             --MCU Min
+      string.format("%+04d", value_min_max[8][2]) .. '|' ..             --1RSS Max
+      string.format("%+04d", value_min_max[8][3]) .. '|' ..             --1RSS Min
+      string.format("%+04d", value_min_max[9][2]) .. '|' ..             --2RSS Max
+      string.format("%+04d", value_min_max[9][3]) .. '|' ..             --2RSS Min
+      string.format("%03d", value_min_max[10][2]) .. '|' ..             --RQly Max
+      string.format("%03d", value_min_max[10][3]) .. '|' ..             --RQly Min
+      string.format("%03d", value_min_max[11][2]) .. '|' ..             --Throttle Max
+      string.format("%04.1f", value_min_max[12][3]) .. '|' ..           --BEC Max
+      string.format("%04.1f", value_min_max[12][2]) .. "\n"             --BEC Min
+
+    io.write(log_file_object, new_log_entry)
+    io.close(log_file_object)
+
+    should_write_log = false
+
+    -- Rebuild table with latest stats
+    model_flight_stats = process_logs_startup(model_name)
   end
 end
 
