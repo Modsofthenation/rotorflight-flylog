@@ -433,14 +433,11 @@ local function renderFlightViewer()
   function gui.fullScreenRefresh()
     lcd.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
     lcd.drawText(COL1, HEADER / 2, "Flight Viewer: " .. model_name, VCENTER + DBLSIZE + libGUI.colors.primary2)
-    lcd.drawFilledRectangle(0, 85, LCD_W, LCD_H - 120, LIGHTWHITE)
-    lcd.drawFilledRectangle(0, 85, 50, LCD_H - 85, libGUI.colors.primary2)
-    lcd.drawFilledRectangle(LCD_W - 50, 85, 50, LCD_H - 50, libGUI.colors.primary2)
   end
   gui.fullScreenRefresh()
 
   if selected_log_file_index < model_log_file_count then
-    gui.button(LCD_W - 40, 100, 30, 30, ">", 
+    gui.button(LCD_W - 40, 5, 30, 30, ">", 
       function()
         selected_log_file_index = selected_log_file_index + 1
         renderFlightViewer()
@@ -449,7 +446,7 @@ local function renderFlightViewer()
   end
 
   if selected_log_file_index > 1 then
-    gui.button(10, 100, 30, 30, "<", 
+    gui.button(LCD_W - 80, 5, 30, 30, "<", 
       function()
         selected_log_file_index = selected_log_file_index - 1
         renderFlightViewer()
@@ -460,7 +457,7 @@ local function renderFlightViewer()
   local y_position = 10
   local local_file_index = 0
 
-  local x_offset = 55
+  local x_offset = 0
   for log_file_name, data in spairs(log_data, function(t,a,b) return b < a end) do
     if selected_log_file_index == local_file_index then
       gui.drawFilledRectangle(0, 0, LCD_W, HEADER, COLOR_THEME_SECONDARY1)
@@ -480,7 +477,7 @@ local function renderFlightViewer()
       ys = y_position + 90
       --Log menu
       for m = 0, data.flight_count - 1 do
-        if m % 6 == 0 then
+        if m % 8 == 0 then
           xs = 15 + x_offset
           if m > 0 then
             ys = ys + 35
