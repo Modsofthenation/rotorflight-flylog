@@ -15,6 +15,6 @@ Expanding on the excellent widget produced by Mo.
 
 - The flight viewer now utilizes LibGUI widgets, allowing scrolling through past dates where flights are logged. It displays dates with logged flights, showing flight count and time for each selected date.
 
-![Fligth viewer imge 1](https://i.ibb.co/py0L2GP/Fligth-Viewer.png)
+![Fligth viewer imge 1](https://i.ibb.co/q7ndZWH/Flight-Viewer.png)
 
-![Fligth viewer imge 2](https://i.ibb.co/J3pqYXt/Fligth-Viewer-2.png)
+![Fligth viewer imge 2](https://i.ibb.co/2qPQC2T/Flight-Viewer-2.png)
